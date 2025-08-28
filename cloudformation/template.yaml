@@ -1,0 +1,166 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Serverless Data Analytics Platform on AWS
+
+Parameters:
+  DataLakeBucketName:
+    Type: String
+    Description: A unique name for the S3 bucket to be used as the data lake.
+
+Resources:
+  # S3 Data Lake Bucket
+  DataLakeBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref DataLakeBucketName
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  # Kinesis Data Stream for Real-Time Ingestion
+  Clickstream:
+    Type: AWS::Kinesis::Stream
+    Properties:
+      Name: clickstream-input
+      ShardCount: 1
+
+  # IAM Role for Lambda Function 
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaKinesisExecutionRole
+      Policies:
+        - PolicyName: S3WritePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource: !Sub 'arn:aws:s3:::${DataLakeBucket}/*'
+
+  # Lambda Function for Real-Time Processing 
+  ClickstreamProcessorFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: Clickstream-Processor
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.11
+      Timeout: 60
+      Code:
+        ZipFile: |
+          import json
+          import base64
+          import boto3
+          import os
+          from datetime import datetime
+
+          s3 = boto3.client('s3')
+          BUCKET_NAME = os.environ['DATA_LAKE_BUCKET']
+
+          def lambda_handler(event, context):
+              processed_records = []
+              for record in event['Records']:
+                  payload = base64.b64decode(record['kinesis']['data']).decode('utf-8')
+                  data = json.loads(payload)
+                  data['processed_at'] = datetime.utcnow().isoformat()
+                  processed_records.append(data)
+
+              if processed_records:
+                  now = datetime.utcnow()
+                  file_key = f"realtime/year={now.year}/month={now.month:02}/day={now.day:02}/{context.aws_request_id}.json"
+                  s3.put_object(
+                      Bucket=BUCKET_NAME,
+                      Key=file_key,
+                      Body=json.dumps(processed_records, indent=2),
+                      ContentType='application/json'
+                  )
+              return {'statusCode': 200}
+      Environment:
+        Variables:
+          DATA_LAKE_BUCKET: !Ref DataLakeBucket
+
+  # Kinesis to Lambda Trigger 
+  LambdaEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      EventSourceArn: !GetAtt Clickstream.Arn
+      FunctionName: !Ref ClickstreamProcessorFunction
+      StartingPosition: LATEST
+
+  # IAM Role for Glue 
+  GlueRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: glue.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole
+      Policies:
+        - PolicyName: S3AccessForGlue
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource: !Sub 'arn:aws:s3:::${DataLakeBucket}/*'
+
+  # Glue ETL Job 
+  BatchProcessorJob:
+    Type: AWS::Glue::Job
+    Properties:
+      Name: Batch-Ad-Data-Processor
+      Role: !GetAtt GlueRole.Arn
+      Command:
+        Name: glueetl
+        ScriptLocation: !Sub 's3://${DataLakeBucket}/scripts/etl/csv_to_parquet_converter.py'
+        PythonVersion: '3'
+      DefaultArguments:
+        "--S3_SOURCE": !Sub 's3://${DataLakeBucket}/raw-data/ad_impressions.csv'
+        "--S3_DEST": !Sub 's3://${DataLakeBucket}/processed-data/batch/'
+        "--job-bookmark-option": "job-bookmark-disable"
+
+  # Glue Database 
+  AnalyticsDatabase:
+    Type: AWS::Glue::Database
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseInput:
+        Name: analytics_db
+
+  #  Glue Crawler 
+  AnalyticsCrawler:
+    Type: AWS::Glue::Crawler
+    Properties:
+      Name: analytics-crawler
+      Role: !GetAtt GlueRole.Arn
+      DatabaseName: !Ref AnalyticsDatabase
+      Targets:
+        S3Targets:
+          - Path: !Sub 's3://${DataLakeBucket}/processed-data/'
+      SchemaChangePolicy:
+        UpdateBehavior: LOG
+        DeleteBehavior: LOG
+
+Outputs:
+  DataLakeBucketName:
+    Description: The name of the S3 bucket created for the data lake.
+    Value: !Ref DataLakeBucket
