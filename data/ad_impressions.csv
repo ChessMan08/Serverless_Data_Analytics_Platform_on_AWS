@@ -1,0 +1,6 @@
+impression_id,timestamp,campaign_id,ad_creative,user_id,platform,cost
+101,2025-08-28T17:30:00Z,cmp-a,banner-01,user-x,mobile,0.05
+102,2025-08-28T17:31:15Z,cmp-b,video-03,user-y,desktop,0.12
+103,2025-08-28T17:32:05Z,cmp-a,banner-02,user-z,mobile,0.06
+104,2025-08-28T17:33:40Z,cmp-c,banner-01,user-x,desktop,0.08
+105,2025-08-28T17:34:00Z,cmp-b,video-04,user-y,mobile,0.15
