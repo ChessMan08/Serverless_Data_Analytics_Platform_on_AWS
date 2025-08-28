@@ -109,3 +109,8 @@ To avoid ongoing charges, you can destroy all the created resources by deleting 
 
 ```bash
 aws cloudformation delete-stack --stack-name serverless-analytics-platform
+```
+
+## LICENSE
+
+This project is licensed under the MIT License. You are free to use, modify, and distribute this software under the terms of the `MIT License`.
