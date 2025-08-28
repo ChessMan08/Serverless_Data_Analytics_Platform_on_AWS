@@ -81,10 +81,12 @@ The entire infrastructure is deployed using the provided CloudFormation template
 ### 2. Process Real-Time Data
 
 * **Install producer dependencies:**
+
     ```bash
     pip install -r scripts/producer/requirements.txt
     ```
 * **Run the producer script:** This script will send simulated clickstream data to your Kinesis stream. Remember to set the correct AWS region inside the script if it's different from `us-east-1`.
+
     ```bash
     python scripts/producer/clickstream_producer.py
     ```
@@ -93,6 +95,7 @@ The entire infrastructure is deployed using the provided CloudFormation template
 
 * **Run the Glue Crawler:** In the AWS Glue console, run the `analytics-crawler` to catalog both the batch and real-time processed data.
 * **Analyze with Athena:** Navigate to the Amazon Athena console. You should see the `analytics_db` database with two tables: `batch` and `realtime`. You can now run standard SQL queries on them.
+
     ```sql
     -- Query batch advertising data
     SELECT * FROM "analytics_db"."batch" LIMIT 10;
