@@ -114,6 +114,26 @@ To avoid ongoing charges, you can destroy all the created resources by deleting 
 aws cloudformation delete-stack --stack-name serverless-analytics-platform
 ```
 
+---
+
+## Visualization Layer (Amazon QuickSight)
+
+To complete the end-to-end data story, a visualization layer was built using **Amazon QuickSight**. This allows business users to easily explore the processed data and gain insights without writing any SQL.
+
+The dashboard connects directly to the Athena tables and runs live queries, ensuring the data is always up-to-date.
+
+### Sample Dashboard
+
+![Advertising Analytics Dashboard](dashboard_screenshots/dashboard-overview.png)
+
+### Setup Steps
+
+1.  **Sign up for QuickSight**: From the AWS Console, complete the one-time setup for the QuickSight Standard Edition.
+2.  **Grant Permissions**: During setup, it's critical to grant QuickSight access to **Amazon Athena** and the specific **S3 bucket** used in the data lake.
+3.  **Create a New Dataset**: Inside QuickSight, create a new dataset pointing to the `analytics_db` in Athena.
+4.  **Build Visuals**: Create charts (e.g., bar charts for campaign_id usage) in the Analysis view.
+5.  **Publish**: Publish the analysis as a shareable dashboard.
+
 ## LICENSE
 
 This project is licensed under the MIT License. You are free to use, modify, and distribute this software under the terms of the `MIT License`.
