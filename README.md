@@ -124,7 +124,7 @@ The dashboard connects directly to the Athena tables and runs live queries, ensu
 
 ### Sample Dashboard
 
-![Advertising Analytics Dashboard](dashboard_screenshots/dashboard-overview.png)
+![Advertising Analytics Dashboard](dashboard_screenshot/dashboard-overview.png)
 
 ### Setup Steps
 
