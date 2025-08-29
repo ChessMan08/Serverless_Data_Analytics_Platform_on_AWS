@@ -122,7 +122,7 @@ To complete the end-to-end data story, a visualization layer was built using **A
 
 The dashboard connects directly to the Athena tables and runs live queries, ensuring the data is always up-to-date.
 
-### Sample Dashboard
+### Dashboard
 
 ![Advertising Analytics Dashboard](dashboard_screenshot/dashboard-overview.png)
 
